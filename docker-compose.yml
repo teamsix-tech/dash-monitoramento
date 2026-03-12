@@ -1,6 +1,8 @@
 networks:
   monitor-net:
     name: monitor-net
+  traefik_public:
+    external: true
 
 volumes:
   prometheus_data: {}
