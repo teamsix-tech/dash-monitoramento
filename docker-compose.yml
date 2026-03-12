@@ -10,7 +10,6 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.17.1
-    container_name: prometheus
     volumes:
       - ./prometheus:/etc/prometheus
       - prometheus_data:/prometheus
