@@ -8,6 +8,91 @@ volumes:
     prometheus_data: {}
     grafana_data: {}
 
+configs:
+  loki_config:
+    content: |
+      auth_enabled: false
+      server:
+        http_listen_port: 3100
+      common:
+        path_prefix: /loki
+        replication_factor: 1
+        ring:
+          kvstore:
+            store: inmemory
+      schema_config:
+        configs:
+          - from: 2024-01-01
+            store: boltdb-shipper
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: index_
+              period: 24h
+      storage_config:
+        boltdb_shipper:
+          active_index_directory: /loki/index
+          cache_location: /loki/cache
+        filesystem:
+          directory: /loki/chunks
+      limits_config:
+        retention_period: 168h
+      compactor:
+        working_directory: /loki/compactor
+        shared_store: filesystem
+
+  promtail_config:
+    content: |
+      server:
+        http_listen_port: 9080
+        grpc_listen_port: 0
+      positions:
+        filename: /tmp/positions.yaml
+      clients:
+        - url: http://loki:3100/loki/api/v1/push
+      scrape_configs:
+        - job_name: docker
+          docker_sd_configs:
+            - host: unix:///var/run/docker.sock
+              refresh_interval: 5s
+          relabel_configs:
+            - source_labels: ['__meta_docker_container_name']
+              regex: '/(.*)'
+              target_label: container
+            - source_labels: ['__meta_docker_container_label_com_docker_swarm_service_name']
+              target_label: service
+            - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+              target_label: service
+            - source_labels: ['__meta_docker_container_label_com_docker_stack_namespace']
+              target_label: stack
+            - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+              target_label: stack
+            - source_labels: ['__meta_docker_container_image']
+              target_label: image
+            - source_labels: ['__meta_docker_container_id']
+              target_label: __path__
+              replacement: /var/lib/docker/containers/$$1/$$1-json.log
+
+
+  grafana_datasources:
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: Loki
+          type: loki
+          access: proxy
+          url: http://loki:3100
+          isDefault: true
+          version: 1
+          editable: false
+        - name: Prometheus
+          type: prometheus
+          access: proxy
+          url: http://prometheus:9090
+          isDefault: false
+          version: 1
+          editable: false
+
 services:
 
   prometheus:
@@ -68,14 +153,17 @@ services:
       org.label-schema.group: "monitoring"
 
   cadvisor:
-    image: gcr.io/google-containers/cadvisor:v0.34.0
+    image: ghcr.io/google/cadvisor
     container_name: cadvisor
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:rw
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
-      #- /cgroup:/cgroup:ro #doesn't work on MacOS only for Linux
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
     restart: unless-stopped
     expose:
       - 8080
@@ -85,7 +173,7 @@ services:
       org.label-schema.group: "monitoring"
 
   grafana:
-    image: grafana/grafana:6.7.2
+    image: grafana/grafana:10.4.2
     container_name: grafana
     volumes:
       - grafana_data:/var/lib/grafana
@@ -131,3 +219,24 @@ services:
       - monitor-net
     labels:
       org.label-schema.group: "monitoring"
+
+  loki:
+    image: grafana/loki:2.9.2
+    command: -config.file=/etc/loki/loki-config.yml
+    configs:
+      - source: loki_config
+        target: /etc/loki/loki-config.yml
+    networks:
+      - monitor-net
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/promtail-config.yml
+    configs:
+      - source: promtail_config
+        target: /etc/promtail/promtail-config.yml
+    networks:
+      - monitor-net
