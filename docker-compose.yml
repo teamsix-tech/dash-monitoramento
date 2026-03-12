@@ -9,8 +9,10 @@ volumes:
 services:
   prometheus:
     image: prom/prometheus:v2.17.1
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
     volumes:
-      # - ./prometheus:/etc/prometheus
       - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -30,8 +32,9 @@ services:
 
   alertmanager:
     image: prom/alertmanager:v0.20.0
-    # volumes:
-    #   - ./alertmanager:/etc/alertmanager
+    configs:
+      - source: alertmanager_config
+        target: /etc/alertmanager/config.yml
     command:
       - "--config.file=/etc/alertmanager/config.yml"
       - "--storage.path=/alertmanager"
@@ -143,4 +146,8 @@ configs:
   loki_config:
     external: true
   promtail_config:
+    external: true
+  prometheus_config:
+    external: true
+  alertmanager_config:
     external: true
