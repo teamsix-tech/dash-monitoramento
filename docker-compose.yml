@@ -1,6 +1,6 @@
 networks:
   monitor-net:
-    driver: overlay
+    name: monitor-net
 
 volumes:
   prometheus_data: {}
@@ -19,7 +19,10 @@ services:
       - "--web.console.templates=/etc/prometheus/consoles"
       - "--storage.tsdb.retention.time=200h"
       - "--web.enable-lifecycle"
-    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
       - monitor-net
     labels:
@@ -32,7 +35,10 @@ services:
     command:
       - "--config.file=/etc/alertmanager/config.yml"
       - "--storage.path=/alertmanager"
-    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
       - monitor-net
     labels:
@@ -49,7 +55,10 @@ services:
       - "--path.rootfs=/rootfs"
       - "--path.sysfs=/host/sys"
       - "--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)"
-    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
       - monitor-net
     labels:
@@ -66,7 +75,10 @@ services:
     privileged: true
     devices:
       - /dev/kmsg
-    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
       - monitor-net
     labels:
@@ -81,7 +93,10 @@ services:
       - GF_SECURITY_ADMIN_USER=${ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
-    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
       - monitor-net
     labels:
@@ -89,7 +104,10 @@ services:
 
   pushgateway:
     image: prom/pushgateway:v1.2.0
-    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
       - monitor-net
     labels:
@@ -107,7 +125,10 @@ services:
     environment:
       - ADMIN_USER=${ADMIN_USER}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
       - monitor-net
     labels:
@@ -121,6 +142,9 @@ services:
         target: /etc/loki/loki-config.yml
     networks:
       - monitor-net
+    deploy:
+      replicas: 1
+      mode: replicated
 
   promtail:
     image: grafana/promtail:2.9.2
@@ -133,6 +157,8 @@ services:
         target: /etc/promtail/promtail-config.yml
     networks:
       - monitor-net
+    deploy:
+      mode: global
 
 configs:
   loki_config:
