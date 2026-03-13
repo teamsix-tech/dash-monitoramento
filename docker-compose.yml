@@ -61,7 +61,7 @@ services:
       - "--path.sysfs=/host/sys"
       - "--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)"
     deploy:
-      replicas: 1
+      mode: global
       restart_policy:
         condition: on-failure
     networks:
@@ -81,7 +81,7 @@ services:
     devices:
       - /dev/kmsg
     deploy:
-      replicas: 1
+      mode: global
       restart_policy:
         condition: on-failure
     networks:
