@@ -104,15 +104,16 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.monitoring.rule=Host(`monitoring-hml.teamsix.tech`)
+        - traefik.http.routers.monitoring.service=monitoring
+        - traefik.http.routers.monitoring.entrypoints=websecure
+        - traefik.http.routers.monitoring.tls.certresolver=le
+        - traefik.http.routers.monitoring.tls=true
+        - traefik.http.services.monitoring.loadbalancer.server.port=3000
     labels:
       - org.label-schema.group="monitoring"
-      - traefik.enable=true
-      - traefik.http.routers.monitoring.rule=Host(`monitoring-hml.teamsix.tech`)
-      - traefik.http.routers.monitoring.service=monitoring
-      - traefik.http.routers.monitoring.entrypoints=websecure
-      - traefik.http.routers.monitoring.tls.certresolver=le
-      - traefik.http.routers.monitoring.tls=true
-      - traefik.http.services.monitoring.loadbalancer.server.port=3000
     networks:
       - traefik_public
       - monitor-net
