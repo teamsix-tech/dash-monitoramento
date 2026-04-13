@@ -24,7 +24,7 @@ services:
       - "--storage.tsdb.retention.time=200h"
       - "--web.enable-lifecycle"
     deploy:
-      mode: global
+      replicas: 1
       restart_policy:
         condition: on-failure
     networks:
