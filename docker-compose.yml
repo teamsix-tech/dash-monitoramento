@@ -25,6 +25,7 @@ services:
       - "--web.enable-lifecycle"
     deploy:
       replicas: 1
+      mode: global
       restart_policy:
         condition: on-failure
     networks:
